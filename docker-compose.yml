@@ -1,0 +1,26 @@
+services:
+  frontend:
+    build: ./frontend
+    container_name: fuckery-frontend
+    ports:
+      - 5173:5173
+
+  backend:
+    build:
+      context: ./backend
+    container_name: fuckery-backend
+    env_file:
+      - ./backend/.env
+    ports:
+      - 3030:3030
+
+  db:
+    image: mysql:8
+    container_name: fuckery-db
+    environment:
+      MYSQL_DATABASE: 'fuckery'
+      MYSQL_USER: 'fuckery'
+      MYSQL_PASSWORD: 'password123'
+      MYSQL_ROOT_PASSWORD: 'password123'
+    volumes:
+      - ./db:/var/lib/mysql

@@ -1,0 +1,82 @@
+@import url('https://fonts.googleapis.com/css2?family=Fira+Code&family=Inter:wght@400;600&display=swap');
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Inter', sans-serif;
+  background-color: #121212;
+  color: #e0e0e0;
+}
+
+.editor-screen {
+  margin: 0 auto;
+}
+
+h1, h2 {
+  color: #bb86fc;
+}
+
+.field-container {
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.field-container h2 {
+  margin: 0;
+}
+
+.editable-field {
+  background-color: #1e1e1e;
+  border: 1px solid #333;
+  border-radius: 4px;
+  padding: 10px;
+  font-family: 'Fira Code', monospace;
+  font-size: 14px;
+  line-height: 1.6;
+  cursor: pointer;
+  color: #d4d4d4;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  overflow-y: auto;
+  margin: 0 0 5px;
+}
+
+.button-container {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 20px;
+}
+
+button {
+  background-color: #bb86fc;
+  color: #000;
+  border: none;
+  border-radius: 4px;
+  padding: 10px 20px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+button:hover {
+  background-color: #9965f4;
+}
+
+.cm-editor {
+  border: 1px solid #ccc;
+  overflow-y: auto;
+}
+
+.cm-tooltip {
+  z-index: 100;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
+}
+
+.button-green {
+  background-color: #5cb85c;
+}
+.button-yellow {
+  background-color: #f0ad4e;
+}
