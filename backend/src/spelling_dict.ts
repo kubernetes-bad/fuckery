@@ -192,4 +192,5 @@ export const OK_WORDS = [
   'meth',
   'cafe',
   'amidst',
+  'femboy',
 ];
