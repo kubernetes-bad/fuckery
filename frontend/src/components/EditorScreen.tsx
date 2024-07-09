@@ -3,7 +3,7 @@ import CodeEditor from './CodeEditor';
 import { Highlight } from '../types';
 import { EditorView } from '@codemirror/view';
 
-const API_URL = 'http://localhost:3030/';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3030/api';
 
 const BLACKLIST = ['id', 'grade'];
 
@@ -36,7 +36,6 @@ const EditorScreen: FC = () => {
         throw new Error('Failed to fetch next record');
       }
       const data: ApiResponse = await response.json();
-      console.dir(data);
       setCharacter(data.character);
       setEditingCharacter(data.character);
       setHighlights(data.highlights);

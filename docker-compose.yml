@@ -4,6 +4,8 @@ services:
     container_name: fuckery-frontend
     ports:
       - 5173:5173
+    env_file:
+      - ./frontend/.env
 
   backend:
     build:

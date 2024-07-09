@@ -11,10 +11,10 @@ RUN npm run build
 FROM node:22
 
 WORKDIR /app
-EXPOSE 5000
+EXPOSE 5173
 
 COPY package*.json ./
 
 COPY --from=builder /app/dist ./dist
 RUN npm install -g serve
-CMD ["serve", "-s", "dist", "-l", "5000"]
+CMD ["serve", "-s", "dist", "-l", "5173"]
