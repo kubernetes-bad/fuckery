@@ -24,13 +24,21 @@ export async function analyzeText(text: string): Promise<Highlight[]> {
 }
 
 async function findPersonEntities(doc: SpacyDoc): Promise<Highlight[]> {
+  if (!doc.tokens.length) return [];
+
   const ents = (doc.ents || [])
     .filter((ent: SpacyEnt) => ent.label === 'PERSON')
-    .map((ent: SpacyEnt): SpacyEnt => ({
-      ...ent,
-      start: doc.tokens[ent.start].idx, // convert token offsets into char offsets
-      end: doc.tokens[ent.end].idx-1,
-    }));
+    .map((ent: SpacyEnt): SpacyEnt => {  // convert token offsets into char offsets
+      const startToken = doc.tokens[ent.start];
+      const endToken = doc.tokens[ent.end];
+      const start = startToken.idx;
+      const end = endToken ? endToken.idx-1 : startToken.idx + startToken.text.length;
+      return {
+        ...ent,
+        start,
+        end,
+      };
+    });
   return ents.map((ent: SpacyEnt) => ({
     start: ent.start,
     end: ent.end,
