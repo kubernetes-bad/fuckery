@@ -15,7 +15,6 @@ interface Character {
 
 type ApiResponse = {
   character: Character;
-  highlights: { [key: string]: Highlight[] };
 }
 
 const EditorScreen: FC = () => {
@@ -36,9 +35,19 @@ const EditorScreen: FC = () => {
         throw new Error('Failed to fetch next record');
       }
       const data: ApiResponse = await response.json();
+      (async () => Promise.all( // dynamically load highlights
+        Object.keys(data.character)
+          .filter(key => !BLACKLIST.includes(key))
+          .filter(key => !!data.character[key as keyof Character])
+          .map(async (key) => {
+            const dataKey = key as keyof Character;
+            const text = data.character[dataKey];
+            return fetchHighlights(dataKey, text);
+          })
+        )
+      )();
       setCharacter(data.character);
       setEditingCharacter(data.character);
-      setHighlights(data.highlights);
       setEditingField(null);
     } catch (error) {
       console.error('Error fetching next record:', error);
@@ -84,12 +93,9 @@ const EditorScreen: FC = () => {
 
     if (character[field] !== editingCharacter[field]) {
       try {
-        // await updateCharacterField(field, editingCharacter[field]);
         setCharacter(editingCharacter);
       } catch (error) {
         console.error('Error saving character:', error);
-        // Revert changes if save fails
-        setEditingCharacter(character);
       }
     }
     setEditingField(null);

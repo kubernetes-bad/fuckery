@@ -12,12 +12,14 @@ const spell = nspell(en.aff.toString(), en.dic.toString())
 export async function analyzeText(text: string): Promise<Highlight[]> {
   const doc = await nlp(text);
 
-  const fieldHighlights = findImbalancedSymbols(text);
-  const personHighlights = await findPersonEntities(doc);
-  const spellingHighlights = findSpellingMistakes(doc);
-  const unterminatedMarkdownHighlights = findUnterminatedMarkdown(text);
-
-  return [...fieldHighlights, ...personHighlights, ...spellingHighlights, ...unterminatedMarkdownHighlights]
+  const highlights = await Promise.all([
+    findImbalancedSymbols(text),
+    findPersonEntities(doc),
+    findSpellingMistakes(doc),
+    findUnterminatedMarkdown(text),
+  ]);
+  return highlights
+    .flat()
     .sort((h1, h2) => h1.start - h2.start);
 }
 

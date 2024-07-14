@@ -23,11 +23,8 @@ router.get('/next', async (req, res) => {
       return res.status(404).json({ message: 'No characters found' });
     }
 
-    const highlights = await generateHighlights(character);
-
     const editableCharacter: EditableCharacter = {
       character,
-      highlights,
     };
 
     res.json(editableCharacter);
@@ -40,7 +37,7 @@ router.get('/next', async (req, res) => {
 router.post('/highlights', async (req, res) => {
   try {
     const text = req.body.text;
-    if (!text) res.status(400).json({ message: 'No text provided' });
+    if (!text) return res.status(400).json({ message: 'No text provided' });
 
     const highlights = await analyzeText(text);
     res.json({ highlights });

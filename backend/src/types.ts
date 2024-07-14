@@ -22,7 +22,6 @@ export interface Highlights {
 
 export interface EditableCharacter {
   character: Character;
-  highlights: Highlights;
 }
 
 export interface Edit {
