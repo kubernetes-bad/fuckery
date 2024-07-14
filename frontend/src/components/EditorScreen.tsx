@@ -65,6 +65,7 @@ const EditorScreen: FC = () => {
       });
 
       if (!response.ok) {
+        console.error(response)
         throw new Error('Failed to fetch highlights');
       }
 
@@ -124,6 +125,21 @@ const EditorScreen: FC = () => {
     }
   };
 
+  const handleBad = async () => {
+    try {
+      const response = await fetch(new URL('/edit', API_URL), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...editingCharacter, grade: 'bad' }),
+      })
+      if (!response.ok) throw new Error('Failed to mark as bad');
+
+      await fetchNextRecord();
+    } catch (err) {
+      console.error('Error marking as bad:', err);
+    }
+  };
+
   const createEditorExtensions = useCallback((field: keyof Character) => [
     EditorView.updateListener.of((update) => {
       if (update.docChanged) {
@@ -162,6 +178,9 @@ const EditorScreen: FC = () => {
       <div className="button-container">
         <button className="button-yellow" onClick={handleSkip}>
           Skip
+        </button>
+        <button className="button-red" onClick={handleBad}>
+          Mark as Bad
         </button>
         <button className="button-green" onClick={handleComplete}>
           Complete
