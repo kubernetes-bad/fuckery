@@ -1,7 +1,6 @@
 import { Router } from 'express';
 import { db } from './db.js';
-import { Character, EditableCharacter, Edit } from './types.js';
-import { Highlights } from './types.js';
+import { Character, EditableCharacter } from './types.js';
 import { analyzeText } from './text-tools.js';
 
 const INPUT_TABLE = 'characters';
@@ -72,23 +71,5 @@ router.post('/edit', async (req, res) => {
     res.status(500).json({ message: 'Internal server error' });
   }
 });
-
-async function generateHighlights(character: Character): Promise<Highlights> {
-  const result: Highlights = {};
-
-  await Promise.all(['personality', 'scenario', 'tavern_personality', 'first_message', 'example_dialogs']
-    .map(async (field) => {
-      const text = character[field as keyof Character];
-      if (!text) return;
-      result[field] = await analyzeText(`${text}`);
-    })
-  );
-
-  return Object.keys(result).reduce((accum, key) => {
-    const value = result[key];
-    if (!!value) accum[key] = value;
-    return accum;
-  }, {} as Highlights);
-}
 
 export default router;
