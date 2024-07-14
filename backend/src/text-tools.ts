@@ -51,14 +51,28 @@ function findImbalancedSymbols(text: string): Highlight[] {
   const highlights: Highlight[] = [];
   const stack: { char: string; index: number }[] = [];
   const pairs: { [key: string]: string } = {
-    '"': '"',
     '(': ')',
     '[': ']'
   };
 
+  let isOpenQuote = true; // Track whether the next quote should be an opening or closing quote
+
   for (let i = 0; i < text.length; i++) {
     const char = text[i];
-    if (char === '*') {
+    if (char === '"') {
+      if (isOpenQuote) stack.push({ char, index: i });
+      else {
+        if (stack.length === 0 || stack[stack.length - 1].char !== '"') {
+          highlights.push({
+            start: i,
+            end: i + 1,
+            message: `Unmatched closing quote`,
+            type: 'ERR',
+          });
+        } else stack.pop();
+      }
+      isOpenQuote = !isOpenQuote; // Toggle the quote state
+    } else if (char === '*') {
       if (stack.length > 0 && stack[stack.length - 1].char === '*') stack.pop(); // Properly close previous '*'
       else stack.push({ char, index: i }); // Treat '*' as opening symbol
     } else if (Object.keys(pairs).includes(char)) {
