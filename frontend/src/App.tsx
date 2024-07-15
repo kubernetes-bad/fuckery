@@ -1,5 +1,5 @@
 import EditorScreen from './components/EditorScreen';
-import './App.css';
+import '../style.css';
 
 function App() {
   return (
