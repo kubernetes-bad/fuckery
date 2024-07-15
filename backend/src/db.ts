@@ -39,6 +39,7 @@ export async function initializeDatabase() {
       table.text('example_dialogs');
       table.string('grade', 255);
       table.primary(['id', 'editor']);
+      table.timestamps(true, true);
     });
   }
 }
