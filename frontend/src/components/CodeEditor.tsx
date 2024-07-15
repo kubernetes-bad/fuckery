@@ -78,20 +78,17 @@ const CodeEditor: FC<CodeEditorProps> = ({ value, onChange, onBlur, highlights, 
         }),
         EditorView.domEventHandlers({
           mousemove(event: MouseEvent, view: EditorView) {
+            if (!editorRef.current) return;
             const pos = view.posAtCoords({ x: event.clientX, y: event.clientY });
-            if (pos) {
-              const highlight = highlights.find((h) => pos >= h.start && pos < h.end);
-              if (highlight) {
-                const rect = (event.target as Element).getBoundingClientRect();
-                setTooltip({
-                  message: highlight.message,
-                  x: event.clientX - rect.left,
-                  y: event.clientY - rect.top,
-                });
-              } else {
-                setTooltip(null);
-              }
-            }
+            if (!pos) return;
+            const highlight = highlights.find((h) => pos >= h.start && pos < h.end);
+            if (!highlight) return setTooltip(null);
+            const rect = editorRef.current.getBoundingClientRect();
+            setTooltip({
+              message: highlight.message,
+              x: event.clientX - rect.left,
+              y: event.clientY - rect.top,
+            });
           },
           mouseout() {
             setTooltip(null);
@@ -132,28 +129,15 @@ const CodeEditor: FC<CodeEditorProps> = ({ value, onChange, onBlur, highlights, 
   }, [value]);
 
   return (
-    <div style={{ position: 'relative' }}>
+    <div style={{ position: 'relative', height: '100%' }}>
       <div ref={editorRef} style={{ height: '100%' }} onBlur={onBlur} />
-      {tooltip && (
-        <div
-          style={{
-            position: 'absolute',
-            color: '#000',
-            left: `${tooltip.x}px`,
-            top: `${tooltip.y + 20}px`,
-            backgroundColor: '#f0f0f0',
-            border: '1px solid #ccc',
-            borderRadius: '3px',
-            padding: '5px',
-            zIndex: 1000,
-            pointerEvents: 'none',
-          }}
-        >
-          {tooltip.message}
-        </div>
-      )}
+      {tooltip && (<div className="floating-tooltip" style={{
+        left: `${tooltip.x}px`,
+        top: `${tooltip.y + 20}px`,
+      }}>{tooltip.message}</div>)}
     </div>
   );
 };
 
-export default memo(CodeEditor);
+const CodeEditorImpl = memo(CodeEditor);
+export default CodeEditorImpl;

@@ -142,11 +142,10 @@ const EditorScreen: FC = () => {
 
   const createEditorExtensions = useCallback((field: keyof Character) => [
     EditorView.updateListener.of((update) => {
-      if (update.docChanged) {
-        const newValue = update.state.doc.toString();
-        handleChange(field, newValue);
-        fetchHighlights(field, newValue);
-      }
+      if (!update.docChanged) return;
+      const newValue = update.state.doc.toString();
+      handleChange(field, newValue);
+      fetchHighlights(field, newValue);
     }),
   ], [fetchHighlights, handleChange]);
 
