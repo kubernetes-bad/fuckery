@@ -27,9 +27,23 @@ const EditorScreen: FC = () => {
     fetchNextRecord();
   }, []);
 
+  async function fetchWithAuth(url: string, options: RequestInit = {}) {
+    const response = await fetch(new URL(url, API_URL), {
+      ...options,
+      credentials: 'include',
+      redirect: 'manual',
+    });
+    if (response.type === 'opaqueredirect' || response.status === 401) {
+      window.location.href = `${API_URL}/auth/login`;
+      throw new Error('Unauthorized');
+    }
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    return response;
+  }
+
   const fetchNextRecord = async () => {
     try {
-      const response = await fetch(new URL('/next', API_URL));
+      const response = await fetchWithAuth('/next');
       if (!response.ok) {
         console.error(response);
         throw new Error('Failed to fetch next record');
@@ -56,7 +70,7 @@ const EditorScreen: FC = () => {
 
   const fetchHighlights = useCallback(async (field: keyof Character, text: string) => {
     try {
-      const response = await fetch(new URL('/highlights', API_URL), {
+      const response = await fetchWithAuth('/highlights', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -110,7 +124,7 @@ const EditorScreen: FC = () => {
     if (!editingCharacter) return;
 
     try {
-      const response = await fetch(new URL('/edit', API_URL), {
+      const response = await fetchWithAuth('/edit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(editingCharacter),
@@ -127,7 +141,7 @@ const EditorScreen: FC = () => {
 
   const handleBad = async () => {
     try {
-      const response = await fetch(new URL('/edit', API_URL), {
+      const response = await fetchWithAuth('/edit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...editingCharacter, grade: 'bad' }),

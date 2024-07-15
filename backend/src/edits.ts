@@ -2,13 +2,14 @@ import { Router } from 'express';
 import { db } from './db.js';
 import { Character, EditableCharacter } from './types.js';
 import { analyzeText } from './text-tools.js';
+import { AuthenticatedRequest, ensureAuthenticated } from './auth.js';
 
 const INPUT_TABLE = 'characters';
 const OUTPUT_TABLE = 'edits';
 
 const router = Router();
 
-router.get('/next', async (req, res) => {
+router.get('/next', ensureAuthenticated, async (req, res) => {
   try {
     const character: Character = await db(INPUT_TABLE)
       .leftJoin(OUTPUT_TABLE, `${INPUT_TABLE}.id`, `${OUTPUT_TABLE}.id`)
@@ -33,7 +34,7 @@ router.get('/next', async (req, res) => {
   }
 });
 
-router.post('/highlights', async (req, res) => {
+router.post('/highlights', ensureAuthenticated, async (req, res) => {
   try {
     const text = req.body.text;
     if (!text) return res.status(400).json({ message: 'No text provided' });
@@ -46,10 +47,11 @@ router.post('/highlights', async (req, res) => {
   }
 })
 
-router.post('/edit', async (req, res) => {
+router.post('/edit', ensureAuthenticated, async (req, res) => {
   try {
+    const authenticatedReq = req as AuthenticatedRequest;
     const char: Character = req.body;
-    const editor = req.header('x-editor');
+    const editor = req.header('x-editor') || authenticatedReq.user?.preferred_username || authenticatedReq.user?.sub;
 
     await db(OUTPUT_TABLE).insert({
       id: char.id,

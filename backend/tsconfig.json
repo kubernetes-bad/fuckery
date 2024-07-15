@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
-    "target": "es6",
-    "module": "NodeNext",
+    "target": "es2017",
+    "module": "nodenext",
     "outDir": "./dist",
     "rootDir": "./src",
     "baseUrl": "./src",
