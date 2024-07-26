@@ -13,24 +13,26 @@ const app = express();
 
 app.set('trust proxy', 1); // for cookies behind cloudflare
 app.use(cookieParser());
-app.use(
-  session({
-    secret: process.env.AUTH_SECRET as string,
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      secure: true, // will explode without it
-      httpOnly: true,
-      maxAge: 24 * 60 * 60 * 1000,
-      sameSite: 'none',
-      domain: process.env.COOKIE_DOMAIN,
-    },
-  })
-);
+if (process.env.AUTH_SECRET) {
+  app.use(
+    session({
+      secret: process.env.AUTH_SECRET as string,
+      resave: false,
+      saveUninitialized: false,
+      cookie: {
+        secure: true, // will explode without it
+        httpOnly: true,
+        maxAge: 24 * 60 * 60 * 1000,
+        sameSite: 'none',
+        domain: process.env.COOKIE_DOMAIN,
+      },
+    })
+  );
 
-app.use(passport.initialize());
-app.use(passport.session());
-await setupOIDCClient();
+  app.use(passport.initialize());
+  app.use(passport.session());
+  await setupOIDCClient();
+}
 app.use(cors({
   origin: process.env.FRONTEND_URL,
   credentials: true,
