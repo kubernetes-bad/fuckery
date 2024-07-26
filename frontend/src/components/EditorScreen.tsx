@@ -17,11 +17,17 @@ type ApiResponse = {
   character: Character;
 }
 
+type ServerStats = {
+  total: number
+  done: number
+}
+
 const EditorScreen: FC = () => {
   const [character, setCharacter] = useState<Character | null>(null);
   const [editingCharacter, setEditingCharacter] = useState<Character | null>(null);
   const [highlights, setHighlights] = useState<{ [key in keyof Character]?: Highlight[] }>({});
   const [editingField, setEditingField] = useState<keyof Character | null>(null);
+  const [stats, setStats] = useState<ServerStats>({ total: 0, done: 0 });
 
   useEffect(() => {
     fetchNextRecord();
@@ -65,6 +71,19 @@ const EditorScreen: FC = () => {
       setEditingField(null);
     } catch (error) {
       console.error('Error fetching next record:', error);
+    }
+
+    fetchStats();
+  };
+
+  const fetchStats = async () => {
+    try {
+      const response = await fetchWithAuth('/info')
+      const data = await response.json();
+      if (!data.total) return;
+      setStats({ total: data.total, done: data.done || 0 });
+    } catch (e) {
+      console.error('Error fetching stats:', e);
     }
   };
 
@@ -199,6 +218,12 @@ const EditorScreen: FC = () => {
           Complete
         </button>
       </div>
+
+      {!!stats.total && (
+        <div className="counter">
+          <small>{stats.done} / {stats.total} ({Math.round((stats.done * 100 / stats.total) * 100) / 100}%)</small>
+        </div>
+      )}
     </div>
   );
 };
