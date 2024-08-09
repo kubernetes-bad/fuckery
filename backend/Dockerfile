@@ -17,4 +17,7 @@ RUN apt update && apt install -y nano python3-pip && pip install spacy
 COPY --from=builder /app/package.json /app/package-lock.json ./
 COPY --from=builder /app/dist ./dist
 RUN npm install --omit=dev
+
+COPY ./spaCy.py /app/node_modules/@nlp-x/spacy3.x/dist/utilities/spaCy.py
+
 CMD npm run start
