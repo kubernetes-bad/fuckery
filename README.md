@@ -13,10 +13,10 @@ _Part of the [CharGen](https://huggingface.co/kubernetes-bad/chargen-v2) project
 
 ## Screenshots
 Main screen:
-![Main Screen](./media/main_screen.png)
+![Main Screen](media/main_screen.png)
 
 Edit mode:
-![Edit Mode](./media/edit_mode.png)
+![Edit Mode](media/edit_mode.png)
 
 
 ## Installation
