@@ -131,7 +131,7 @@ router.get('/info', ensureAuthenticated, async (req, res) => {
   try {
     const [total, done] = await Promise.all([
       db(INPUT_TABLE).count('id as count').first(),
-      db(OUTPUT_TABLE).count('id as count').first()
+      db(OUTPUT_TABLE).countDistinct('id as count').first()
     ]);
     if (!total || !done) return res.send({});
     res.send({ total: total.count, done: done.count });

@@ -1,33 +1,84 @@
-import { useState, useEffect, FC, useCallback } from 'react';
+import { useState, useEffect, FC, useCallback, useRef } from 'react';
 import CodeEditor from './CodeEditor';
 import { Highlight } from '../types';
 import { EditorView } from '@codemirror/view';
 import { complete, fetchNextSample, getHighlights, getStats, grade, Grade, Sample } from '../lib/api.ts';
 
-const BLACKLIST = ['id', 'grade'];
+const HIGHLIGHTS_BLACKLIST = ['id', 'name', 'grade']; // todo: replace with config fields!
+const FIELDS = [
+  'id',
+  'name',
+  'personality',
+  'scenario',
+  'tavern_personality',
+  'first_message',
+  'example_dialogs',
+  'grade',
+];
 
 type ServerStats = {
   total: number
   done: number
 }
 
+function useDebounce<T extends (...args: never[]) => void>(
+  callback: T,
+  delay: number
+): (...args: Parameters<T>) => void {
+  const timeoutRef = useRef<number | null>(null);
+
+  return useCallback((...args: Parameters<T>) => {
+    if (timeoutRef.current !== null) {
+      window.clearTimeout(timeoutRef.current);
+    }
+
+    timeoutRef.current = window.setTimeout(() => {
+      callback(...args);
+    }, delay);
+  }, [callback, delay]);
+}
+
 const EditorScreen: FC = () => {
-  const [character, setCharacter] = useState<Sample | null>(null);
-  const [editingCharacter, setEditingCharacter] = useState<Sample | null>(null);
+  const [sample, setSample] = useState<Sample | null>(null);
+  const [editingSample, setEditingSample] = useState<Sample | null>(null);
   const [highlights, setHighlights] = useState<{ [key in keyof Sample]?: Highlight[] }>({});
   const [editingField, setEditingField] = useState<keyof Sample | null>(null);
   const [stats, setStats] = useState<ServerStats>({ total: 0, done: 0 });
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const lastFetchedFieldRef = useRef<keyof Sample | null>(null);
 
-  useEffect(() => {
-    fetchNextRecord();
+  const fetchHighlights = useCallback(async (field: keyof Sample, text: string) => {
+    if (HIGHLIGHTS_BLACKLIST.includes(`${field}`)) return;
+    if (abortControllerRef.current && lastFetchedFieldRef.current === field) {
+      abortControllerRef.current.abort();
+    }
+    abortControllerRef.current = new AbortController();
+    lastFetchedFieldRef.current = field;
+
+    try {
+      const data = await getHighlights(text, abortControllerRef.current.signal);
+      setHighlights((prevHighlights) => ({
+        ...prevHighlights,
+        [field]: data.highlights,
+      }));
+    } catch (error) {
+      if (error instanceof Error && error.name !== 'AbortError') {
+        console.error('Error fetching highlights:', error);
+      }
+    } finally {
+      if (lastFetchedFieldRef.current === field) {
+        abortControllerRef.current = null;
+        lastFetchedFieldRef.current = null;
+      }
+    }
   }, []);
 
-  const fetchNextRecord = async () => {
+  const fetchNextRecord = useCallback(async () => {
     try {
       const data = await fetchNextSample();
       (async () => Promise.all( // dynamically load highlights
           Object.keys(data.character)
-            .filter(key => !BLACKLIST.includes(key))
+            .filter(key => !HIGHLIGHTS_BLACKLIST.includes(key))
             .filter(key => !!data.character[key as keyof Sample])
             .map(async (key) => {
               const dataKey = key as keyof Sample;
@@ -36,14 +87,18 @@ const EditorScreen: FC = () => {
             })
         )
       )();
-      setCharacter(data.character);
-      setEditingCharacter(data.character);
+      setSample(data.character);
+      setEditingSample(data.character);
       setEditingField(null);
     } catch (error) {
       console.error('Error fetching next record:', error);
     }
     fetchStats();
-  }
+  }, [fetchHighlights]);
+
+  useEffect(() => {
+    fetchNextRecord();
+  }, [fetchNextRecord]);
 
   const fetchStats = async () => {
     try {
@@ -55,36 +110,27 @@ const EditorScreen: FC = () => {
     }
   };
 
-  const fetchHighlights = useCallback(async (field: keyof Sample, text: string) => {
-    try {
-      const data = await getHighlights(text);
-      setHighlights((prevHighlights) => ({
-        ...prevHighlights,
-        [field]: data.highlights,
-      }));
-    } catch (error) {
-      console.error('Error fetching highlights:', error);
-    }
-  }, []);
+  const debouncedFetchHighlights = useDebounce(fetchHighlights, 500);
 
   const handleEdit = (field: keyof Sample) => {
     setEditingField(field);
   };
 
-  const handleChange = (field: keyof Sample, value: string) => {
-    if (editingCharacter) {
-      setEditingCharacter({ ...editingCharacter, [field]: value });
+  const handleChange = useCallback((field: keyof Sample, value: string) => {
+    if (editingSample) {
+      setEditingSample({ ...editingSample, [field]: value });
+      debouncedFetchHighlights(field, value);
     }
-  };
+  }, [debouncedFetchHighlights, editingSample]);
 
   const handleBlur = async (field: keyof Sample) => {
-    if (!character || !editingCharacter) return;
+    if (!sample || !editingSample) return;
 
-    if (character[field] !== editingCharacter[field]) {
+    if (sample[field] !== editingSample[field]) {
       try {
-        setCharacter(editingCharacter);
+        setSample(editingSample);
       } catch (error) {
-        console.error('Error saving character:', error);
+        console.error('Error saving sample:', error);
       }
     }
     setEditingField(null);
@@ -95,10 +141,10 @@ const EditorScreen: FC = () => {
   };
 
   const handleComplete = async () => {
-    if (!editingCharacter) return;
+    if (!editingSample) return;
 
     try {
-      await complete(editingCharacter);
+      await complete(editingSample);
       console.log('Edits submitted successfully');
       await fetchNextRecord();
     } catch (error) {
@@ -107,9 +153,9 @@ const EditorScreen: FC = () => {
   };
 
   const handleBad = async () => {
-    if (!editingCharacter) return;
+    if (!editingSample) return;
     try {
-      await grade(editingCharacter, Grade.BAD);
+      await grade(editingSample, Grade.BAD);
 
       await fetchNextRecord();
     } catch (err) {
@@ -117,28 +163,36 @@ const EditorScreen: FC = () => {
     }
   };
 
+  const handleAddField = (fieldToAdd: string) => {
+    if (!editingSample) return;
+    setEditingSample((prev) => ({ ...prev, [fieldToAdd]: '\n' }));
+    setSample((prev) => ({ ...prev, [fieldToAdd]: '\n' }));
+    setEditingField(fieldToAdd as keyof Sample);
+  };
+
   const createEditorExtensions = useCallback((field: keyof Sample) => [
     EditorView.updateListener.of((update) => {
       if (!update.docChanged) return;
       const newValue = update.state.doc.toString();
       handleChange(field, newValue);
-      fetchHighlights(field, newValue);
     }),
-  ], [fetchHighlights, handleChange]);
+  ], [handleChange]);
 
-  if (!character || !editingCharacter) return <div>Loading...</div>;
+  if (!sample || !editingSample) return <div>Loading...</div>;
+
+  const emptyFields = FIELDS.filter(field => !sample[field]).filter(field => !HIGHLIGHTS_BLACKLIST.includes(field));
 
   return (
     <div className="editor-screen">
-      {(Object.keys(character) as Array<keyof Sample>)
-        .filter((field) => !!character[field])
-        .filter((field) => !BLACKLIST.includes(`${field}`))
+      {(Object.keys(sample) as Array<keyof Sample>)
+        .filter((field) => !!sample[field])
+        .filter((field) => !HIGHLIGHTS_BLACKLIST.includes(`${field}`))
         .map((field) => (
           <div key={field} className="field-container">
             <h2>{field}</h2>
             {editingField === field ? (
               <CodeEditor
-                value={`${editingCharacter[field]}`}
+                value={`${editingSample[field]}`}
                 onChange={(value) => handleChange(field, value)}
                 onBlur={() => handleBlur(field)}
                 highlights={highlights[field] || []}
@@ -146,11 +200,28 @@ const EditorScreen: FC = () => {
               />
             ) : (
               <pre className="editable-field" onClick={() => handleEdit(field)}>
-                {character[field]}
+                {sample[field]}
               </pre>
             )}
           </div>
         ))}
+      <div className="aux-container">
+        {!!emptyFields.length && (
+          <>
+            <label htmlFor="add_field">Add field:</label>
+            <select id="add_field"
+              onChange={(e) => handleAddField(e.target.value)}
+              value="">
+              <option value="" disabled>Select a field</option>
+              {emptyFields.map((emptyField) => (
+                <option key={emptyField} value={emptyField}>
+                  {emptyField}
+                </option>
+              ))}
+            </select>
+          </>
+        )}
+      </div>
       <div className="button-container">
         <button className="button-yellow" onClick={handleSkip}>
           Skip

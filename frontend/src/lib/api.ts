@@ -37,13 +37,14 @@ export const getStats = async () => {
   return response.json();
 };
 
-export const getHighlights = async (text: string) => {
+export const getHighlights = async (text: string, signal?: AbortSignal) => {
   const response = await fetchWithAuth('/highlights', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ text }),
+    signal,
   });
 
   if (!response.ok) {
