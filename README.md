@@ -10,6 +10,7 @@ _Part of the [CharGen](https://huggingface.co/kubernetes-bad/chargen-v2) project
 - Multi-user - authentication through any OIDC provider
 - Power of [spaCy](https://spacy.io) in the browser (used for NER, currently)
 - Grammar highlighting
+- Review users' changes
 
 ## Screenshots
 Main screen:
@@ -17,6 +18,9 @@ Main screen:
 
 Edit mode:
 ![Edit Mode](media/edit_mode.png)
+
+Review mode:
+![Review Mode](media/review_mode.png)
 
 
 ## Installation
