@@ -1,6 +1,8 @@
 import passport from 'passport';
 import { Strategy as OpenIDConnectStrategy, Issuer, Client } from 'openid-client';
 import { Request, Response, NextFunction, Router } from 'express';
+import { Session } from 'express-session';
+import * as process from 'node:process';
 
 let client: Client;
 
@@ -38,6 +40,23 @@ export function ensureAuthenticated(req: Request, res: Response, next: NextFunct
   const authenticatedReq = req as AuthenticatedRequest;
   if (authenticatedReq.isAuthenticated()) return next();
   res.redirect('/auth/login');
+}
+
+type PassportSession = Session & {
+  passport?: { user?: {[key: string]: any } },
+  [key: string]: any,
+};
+
+export function ensureAdmin(req: Request, res: Response, next: NextFunction) {
+  if (!process.env.AUTH_SECRET) return next();
+  const authenticatedReq = req as AuthenticatedRequest;
+  const passportSession = authenticatedReq.session as PassportSession;
+  if (!authenticatedReq.isAuthenticated()) return res.redirect('/auth/login');
+  if (!passportSession?.passport?.user) return res.redirect('/auth/login');
+  const user = passportSession.passport.user;
+  const isAdmin = (user.groups || []).includes(process.env.AUTH_ADMIN_GROUP || 'admins');
+  if (!isAdmin) return res.redirect('/');
+  return next();
 }
 
 export const authRouter = Router();

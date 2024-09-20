@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { db } from './db.js';
 import { Character, EditableCharacter } from './types.js';
 import { analyzeText } from './text-tools.js';
-import { AuthenticatedRequest, ensureAuthenticated } from './auth.js';
+import { AuthenticatedRequest, ensureAdmin, ensureAuthenticated } from './auth.js';
 
 const INPUT_TABLE = 'characters';
 const OUTPUT_TABLE = 'edits';
@@ -74,7 +74,7 @@ router.post('/edit', ensureAuthenticated, async (req, res) => {
   }
 });
 
-router.get('/edit', ensureAuthenticated, async (req, res) => {
+router.get('/edit', ensureAdmin, async (req, res) => {
   try {
     const fields = [ // todo: replace with config fields!
       'id',

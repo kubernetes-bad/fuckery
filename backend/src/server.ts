@@ -20,10 +20,10 @@ if (process.env.AUTH_SECRET) {
       resave: false,
       saveUninitialized: false,
       cookie: {
-        secure: true, // will explode without it
+        secure: 'auto', // will explode without it
         httpOnly: true,
         maxAge: 24 * 60 * 60 * 1000,
-        sameSite: 'none',
+        sameSite: 'lax',
         domain: process.env.COOKIE_DOMAIN,
       },
     })
