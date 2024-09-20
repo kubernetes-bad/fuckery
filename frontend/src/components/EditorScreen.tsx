@@ -2,20 +2,9 @@ import { useState, useEffect, FC, useCallback } from 'react';
 import CodeEditor from './CodeEditor';
 import { Highlight } from '../types';
 import { EditorView } from '@codemirror/view';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3030/api';
+import { complete, fetchNextSample, getHighlights, getStats, grade, Grade, Sample } from '../lib/api.ts';
 
 const BLACKLIST = ['id', 'grade'];
-
-interface Character {
-  name: string;
-  description: string;
-  scenario: string;
-}
-
-type ApiResponse = {
-  character: Character;
-}
 
 type ServerStats = {
   total: number
@@ -23,47 +12,28 @@ type ServerStats = {
 }
 
 const EditorScreen: FC = () => {
-  const [character, setCharacter] = useState<Character | null>(null);
-  const [editingCharacter, setEditingCharacter] = useState<Character | null>(null);
-  const [highlights, setHighlights] = useState<{ [key in keyof Character]?: Highlight[] }>({});
-  const [editingField, setEditingField] = useState<keyof Character | null>(null);
+  const [character, setCharacter] = useState<Sample | null>(null);
+  const [editingCharacter, setEditingCharacter] = useState<Sample | null>(null);
+  const [highlights, setHighlights] = useState<{ [key in keyof Sample]?: Highlight[] }>({});
+  const [editingField, setEditingField] = useState<keyof Sample | null>(null);
   const [stats, setStats] = useState<ServerStats>({ total: 0, done: 0 });
 
   useEffect(() => {
     fetchNextRecord();
   }, []);
 
-  async function fetchWithAuth(url: string, options: RequestInit = {}) {
-    const response = await fetch(new URL(url, API_URL), {
-      ...options,
-      credentials: 'include',
-      redirect: 'manual',
-    });
-    if (response.type === 'opaqueredirect' || response.status === 401) {
-      window.location.href = `${API_URL}/auth/login`;
-      throw new Error('Unauthorized');
-    }
-    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-    return response;
-  }
-
   const fetchNextRecord = async () => {
     try {
-      const response = await fetchWithAuth('/next');
-      if (!response.ok) {
-        console.error(response);
-        throw new Error('Failed to fetch next record');
-      }
-      const data: ApiResponse = await response.json();
+      const data = await fetchNextSample();
       (async () => Promise.all( // dynamically load highlights
-        Object.keys(data.character)
-          .filter(key => !BLACKLIST.includes(key))
-          .filter(key => !!data.character[key as keyof Character])
-          .map(async (key) => {
-            const dataKey = key as keyof Character;
-            const text = data.character[dataKey];
-            return fetchHighlights(dataKey, text);
-          })
+          Object.keys(data.character)
+            .filter(key => !BLACKLIST.includes(key))
+            .filter(key => !!data.character[key as keyof Sample])
+            .map(async (key) => {
+              const dataKey = key as keyof Sample;
+              const text = data.character[dataKey];
+              return fetchHighlights(dataKey, text);
+            })
         )
       )();
       setCharacter(data.character);
@@ -72,14 +42,12 @@ const EditorScreen: FC = () => {
     } catch (error) {
       console.error('Error fetching next record:', error);
     }
-
     fetchStats();
-  };
+  }
 
   const fetchStats = async () => {
     try {
-      const response = await fetchWithAuth('/info')
-      const data = await response.json();
+      const data = await getStats();
       if (!data.total) return;
       setStats({ total: data.total, done: data.done || 0 });
     } catch (e) {
@@ -87,22 +55,9 @@ const EditorScreen: FC = () => {
     }
   };
 
-  const fetchHighlights = useCallback(async (field: keyof Character, text: string) => {
+  const fetchHighlights = useCallback(async (field: keyof Sample, text: string) => {
     try {
-      const response = await fetchWithAuth('/highlights', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ text }),
-      });
-
-      if (!response.ok) {
-        console.error(response)
-        throw new Error('Failed to fetch highlights');
-      }
-
-      const data = await response.json();
+      const data = await getHighlights(text);
       setHighlights((prevHighlights) => ({
         ...prevHighlights,
         [field]: data.highlights,
@@ -112,17 +67,17 @@ const EditorScreen: FC = () => {
     }
   }, []);
 
-  const handleEdit = (field: keyof Character) => {
+  const handleEdit = (field: keyof Sample) => {
     setEditingField(field);
   };
 
-  const handleChange = (field: keyof Character, value: string) => {
+  const handleChange = (field: keyof Sample, value: string) => {
     if (editingCharacter) {
       setEditingCharacter({ ...editingCharacter, [field]: value });
     }
   };
 
-  const handleBlur = async (field: keyof Character) => {
+  const handleBlur = async (field: keyof Sample) => {
     if (!character || !editingCharacter) return;
 
     if (character[field] !== editingCharacter[field]) {
@@ -143,14 +98,7 @@ const EditorScreen: FC = () => {
     if (!editingCharacter) return;
 
     try {
-      const response = await fetchWithAuth('/edit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editingCharacter),
-      });
-
-      if (!response.ok) throw new Error('Failed to submit edits');
-
+      await complete(editingCharacter);
       console.log('Edits submitted successfully');
       await fetchNextRecord();
     } catch (error) {
@@ -159,13 +107,9 @@ const EditorScreen: FC = () => {
   };
 
   const handleBad = async () => {
+    if (!editingCharacter) return;
     try {
-      const response = await fetchWithAuth('/edit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...editingCharacter, grade: 'bad' }),
-      })
-      if (!response.ok) throw new Error('Failed to mark as bad');
+      await grade(editingCharacter, Grade.BAD);
 
       await fetchNextRecord();
     } catch (err) {
@@ -173,7 +117,7 @@ const EditorScreen: FC = () => {
     }
   };
 
-  const createEditorExtensions = useCallback((field: keyof Character) => [
+  const createEditorExtensions = useCallback((field: keyof Sample) => [
     EditorView.updateListener.of((update) => {
       if (!update.docChanged) return;
       const newValue = update.state.doc.toString();
@@ -186,15 +130,15 @@ const EditorScreen: FC = () => {
 
   return (
     <div className="editor-screen">
-      {(Object.keys(character) as Array<keyof Character>)
+      {(Object.keys(character) as Array<keyof Sample>)
         .filter((field) => !!character[field])
-        .filter((field) => !BLACKLIST.includes(field))
+        .filter((field) => !BLACKLIST.includes(`${field}`))
         .map((field) => (
           <div key={field} className="field-container">
             <h2>{field}</h2>
             {editingField === field ? (
               <CodeEditor
-                value={editingCharacter[field]}
+                value={`${editingCharacter[field]}`}
                 onChange={(value) => handleChange(field, value)}
                 onBlur={() => handleBlur(field)}
                 highlights={highlights[field] || []}

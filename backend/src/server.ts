@@ -12,8 +12,8 @@ const port = process.env.PORT || 3030;
 const app = express();
 
 app.set('trust proxy', 1); // for cookies behind cloudflare
-app.use(cookieParser());
 if (process.env.AUTH_SECRET) {
+  app.use(cookieParser());
   app.use(
     session({
       secret: process.env.AUTH_SECRET as string,

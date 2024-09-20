@@ -83,3 +83,6 @@ button:hover {
 .button-red {
   background-color: #d9534f;
 }
+.button-orange {
+  background-color: rgba(200, 116, 55, 0.71);
+}

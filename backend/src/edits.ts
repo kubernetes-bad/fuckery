@@ -74,6 +74,59 @@ router.post('/edit', ensureAuthenticated, async (req, res) => {
   }
 });
 
+router.get('/edit', ensureAuthenticated, async (req, res) => {
+  try {
+    const fields = [ // todo: replace with config fields!
+      'id',
+      'name',
+      'personality',
+      'scenario',
+      'tavern_personality',
+      'first_message',
+      'example_dialogs',
+      'grade',
+    ];
+
+    let selectors = [INPUT_TABLE, OUTPUT_TABLE]
+      .reduce((accum, table) => {
+        fields.forEach(field => {
+          accum[`${table}_${field}`] = `${table}.${field}`;
+        });
+        return accum;
+      }, {} as {[key: string]: string});
+    selectors = {
+      ...selectors,
+      [`${OUTPUT_TABLE}_editor`]: `${OUTPUT_TABLE}.editor`,
+      [`${INPUT_TABLE}_grade`]: `${INPUT_TABLE}.grade`,
+    };
+
+    const data = await db(INPUT_TABLE)
+      .innerJoin(OUTPUT_TABLE, `${INPUT_TABLE}.id`, `${OUTPUT_TABLE}.id`)
+      .select(selectors)
+      .whereNotIn(`${OUTPUT_TABLE}.grade`, ['bad', 'done', 'rejected'])
+      .orWhereNull(`${OUTPUT_TABLE}.grade`)
+      .orderByRaw('RAND()')
+      .first();
+
+    if (!data) {
+      return res.status(404).json({ message: 'No edits found' });
+    }
+
+    const sample: { [key: string]: string} = { grade: data[`${INPUT_TABLE}_grade`] };
+    const edit: { [key: string]: string} = { editor: data[`${OUTPUT_TABLE}_editor`] };
+
+    fields.forEach(field => {
+      sample[field] = data[`${INPUT_TABLE}_${field}`];
+      edit[field] = data[`${OUTPUT_TABLE}_${field}`];
+    });
+
+    res.json([sample, edit]);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
 router.get('/info', ensureAuthenticated, async (req, res) => {
   try {
     const [total, done] = await Promise.all([
